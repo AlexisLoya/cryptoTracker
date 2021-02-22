@@ -1,11 +1,15 @@
 import React, { Component } from 'react';
-import { View, Text, Image, StyleSheet, SectionList } from 'react-native';
+import { View, Text, Image, StyleSheet, SectionList, FlatList } from 'react-native';
 import Colors from 'cryptoTracker/src/res/Colors';
+import Http from 'cryptoTracker/src/libs/http'
+import CoinMarketItem from './CoinMarketItem'
+
 
 class CoinDetailScreen extends Component {
 
     state = {
-        coin: {}
+        coin: {},
+        markets: []
     }
 
     getSymbolIcon = (coinNameId) => {
@@ -35,6 +39,11 @@ class CoinDetailScreen extends Component {
         return sections;
     }
 
+    getMarkets = async(coinId) =>{
+        const url= `https://api.coinlore.net/api/coin/markets/?id=${coinId}`
+        const markets = await Http.instance.get(url);
+        this.setState({ markets })
+    }
 
     componentDidMount() {
         console.log("coin", this.props.route.params);
@@ -43,9 +52,11 @@ class CoinDetailScreen extends Component {
         this.setState({ coin })
         //Change title header
         this.props.navigation.setOptions({ title: coin.symbol })
+        //get markets
+        this.getMarkets(coin.id)
     }
     render() {
-        const { coin } = this.state
+        const { coin, markets } = this.state
         return (
             <View style={styles.container}>
                 <View style={styles.subHeader}>
@@ -70,6 +81,14 @@ class CoinDetailScreen extends Component {
                         </View>
                     }
                 />
+                <Text style={styles.marketsTitle}>Markets</Text>
+                <FlatList
+                    style={styles.list}
+                    horizontal= {true}
+                    data={markets}
+                    renderItem={({ item }) => <CoinMarketItem item={ item }/>}
+                />
+
             </View>
         );
     }
@@ -98,9 +117,6 @@ const styles = StyleSheet.create({
         width: 25,
         height: 25
     },
-    section: {
-        maxHeight: 220
-    },
     list: {
         maxHeight: 100,
         paddingLeft: 16
@@ -116,6 +132,9 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 14
     },
+    section:{
+        maxHeight: 220
+    },
     sectionText: {
         color: Colors.white,
         fontSize: 14,
@@ -126,7 +145,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "bold",
         marginBottom: 16,
-        marginLeft: 16
+        textAlign: "center"
     },
     btnFavorite: {
         padding: 8,
