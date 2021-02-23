@@ -3,22 +3,42 @@ import { View, Text, ActivityIndicator, Pressable, StyleSheet, FlatList} from 'r
 import Http from 'cryptoTracker/src/libs/http';
 import CoinsItem from './CoinsItem';
 import Colors from 'cryptoTracker/src/res/Colors';
- 
+import CoinsSearch from './CoinsSearch'
+
 
 class CoinsScreen extends Component {
 
     state = {
         coins: [],
+        allCoins: [],
         loading: false
     }
 
     //Api rest
-    componentDidMount = async()=>{
+    componentDidMount = ()=>{
+        this.getCoins();
+    }
+
+    getCoins = async() =>{
         this.setState({ loading: true });
-        const request =await Http.instance.get('https://api.coinlore.net/api/tickers/');
-        console.log("coins", request);
+        //Get coins
+        const request = await Http.instance.get("https://api.coinlore.net/api/tickers/");
+        //console.log("coins", request);
         this.setState({ coins: request.data})
+        this.setState({ allCoins: request.data})
+
         this.setState({ loading: false }); 
+   
+    }
+
+    handleSearch = (query)=>{
+        const { allCoins } = this.state;
+        query = query.toLowerCase();
+        const coinsFiltered = allCoins.filter( (coin)  => {
+            return coin.name.toLowerCase().includes(query) ||
+            coin.symbol.toLowerCase().includes(query)
+        })
+        this.setState({ coins: coinsFiltered })
     }
 
     handlePress = (coin) =>{
@@ -32,6 +52,7 @@ class CoinsScreen extends Component {
         
         return (
             <View style={styles.container}>
+                <CoinsSearch onChange={this.handleSearch}/>
                 { loading ? 
                     <ActivityIndicator color="#fff"
                     size="large" style={styles.loader}/>
