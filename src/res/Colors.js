@@ -7,6 +7,8 @@ const Colors = {
     white: '#fff',
     green: '#81b214',
     red: '#ec0101',
+    picton: "#3c6fc8",
+    carmine: "#ef6372",
 };
 
 export default Colors;

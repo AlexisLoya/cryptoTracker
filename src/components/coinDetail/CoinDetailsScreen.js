@@ -1,15 +1,17 @@
 import React, { Component } from 'react';
-import { View, Text, Image, StyleSheet, SectionList, FlatList } from 'react-native';
+import { View, Text, Image, StyleSheet, SectionList, FlatList, Pressable, Alert} from 'react-native';
 import Colors from 'cryptoTracker/src/res/Colors';
 import Http from 'cryptoTracker/src/libs/http'
 import CoinMarketItem from './CoinMarketItem'
+import Storage from 'cryptoTracker/src/libs/storage'
 
 
 class CoinDetailScreen extends Component {
 
     state = {
         coin: {},
-        markets: []
+        markets: [],
+        isFavorite:false,
     }
 
     getSymbolIcon = (coinNameId) => {
@@ -39,32 +41,95 @@ class CoinDetailScreen extends Component {
         return sections;
     }
 
-    getMarkets = async(coinId) =>{
-        const url= `https://api.coinlore.net/api/coin/markets/?id=${coinId}`
+    toggleFavorite = () => {
+        console.log("toggle");
+        if (!this.state.isFavorite) this.addFavorite();
+        else this.removeFavorite();
+    }
+
+
+    getFavorite = async() =>{
+        try {
+            const key = `favorite-${this.state.coin.id}`
+            const favStr = await Storage.instance.get(key);
+            if (favStr != null) this.setState({isFavorite:true})
+        } catch (error) {
+            
+        }
+        
+    }
+    addFavorite = async() => {
+        const coin = JSON.stringify(this.state.coin)
+        const key = `favorite-${this.state.coin.id}`
+        if(Storage.instance.store(key,coin))
+            this.setState({isFavorite:true})
+        
+      }
+
+    removeFavorite = async() => {
+        Alert.alert("Remove favorite", "Are you sure?", [
+            {
+                text: "cancel",
+                onPress: async() => {},
+                style: "cancel"
+            },
+            {
+                text: "Remove",
+                onPress: async() => {
+                    const key = `favorite-${this.state.coin.id}`
+                    await Storage.instance.remove(key)
+                    this.setState({ isFavorite:false })            
+                }
+            }
+        ])
+    }
+
+    getMarkets = async (coinId) => {
+        const url = `https://api.coinlore.net/api/coin/markets/?id=${coinId}`
         const markets = await Http.instance.get(url);
         this.setState({ markets })
     }
 
     componentDidMount() {
-        console.log("coin", this.props.route.params);
+        //console.log("coin", this.props.route.params);
         const { coin } = this.props.route.params;
-        // Set value of the coin
-        this.setState({ coin })
+        // Set value of the coin and isFavorite?
+        this.setState({ coin }, () =>{
+            this.getFavorite()
+        })
         //Change title header
         this.props.navigation.setOptions({ title: coin.symbol })
         //get markets
         this.getMarkets(coin.id)
     }
     render() {
-        const { coin, markets } = this.state
+        const { coin, markets, isFavorite } = this.state
         return (
             <View style={styles.container}>
                 <View style={styles.subHeader}>
-                    <Image
-                        style={styles.iconImg}
-                        source={{ uri: this.getSymbolIcon(coin.nameid) }}
-                    />
-                    <Text style={styles.titleText}>{coin.name}</Text>
+                    <View style={styles.sub}>
+                        <View style={styles.row}>
+                            <Image
+                                style={styles.iconImg}
+                                source={{ uri: this.getSymbolIcon(coin.nameid) }}
+                            />
+                            <Text style={styles.titleText}>{coin.name}</Text>
+                        </View>
+                    </View>
+                    <Pressable
+                        onPress={this.toggleFavorite}
+                        style={[
+                            styles.btnFavorite,
+                            isFavorite ?
+                                styles.btnFavoriteRemove :
+                                styles.btnFavoriteAdd
+                        ]}>
+                        <Image
+                            style={styles.btnIcon}
+                            source={require('cryptoTracker/src/assets/star.png')}
+                        />
+                        <Text style={styles.btnFavoriteText}>{ isFavorite ? "Remove favorite":"Add favorite"} </Text>
+                    </Pressable>
                 </View>
                 <SectionList
                     style={styles.section}
@@ -84,9 +149,9 @@ class CoinDetailScreen extends Component {
                 <Text style={styles.marketsTitle}>Markets</Text>
                 <FlatList
                     style={styles.list}
-                    horizontal= {true}
+                    horizontal={true}
                     data={markets}
-                    renderItem={({ item }) => <CoinMarketItem item={ item }/>}
+                    renderItem={({ item }) => <CoinMarketItem item={item} />}
                 />
 
             </View>
@@ -105,10 +170,14 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0, 0, 0, 0.1)",
         padding: 16,
         flexDirection: "row",
-        
+        justifyContent: "space-between"
+
+    },
+    sub: {
+        justifyContent: "center"
     },
     titleText: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: "bold",
         color: "#fff",
         marginLeft: 8
@@ -119,7 +188,8 @@ const styles = StyleSheet.create({
     },
     list: {
         maxHeight: 100,
-        paddingLeft: 16
+        paddingLeft: 16,
+        paddingRight: 16
     },
     sectionHeader: {
         backgroundColor: "rgba(0,0,0, 0.2)",
@@ -132,7 +202,7 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 14
     },
-    section:{
+    section: {
         maxHeight: 220
     },
     sectionText: {
@@ -149,7 +219,13 @@ const styles = StyleSheet.create({
     },
     btnFavorite: {
         padding: 8,
-        borderRadius: 8
+        borderRadius: 8,
+        flexDirection: "row",
+        justifyContent: "center"
+    },
+    btnIcon: {
+        width: 20,
+        height: 20
     },
     btnFavoriteText: {
         color: Colors.white
